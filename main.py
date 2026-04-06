@@ -22,12 +22,12 @@ bot = Bot(
 )
 dp = Dispatcher()
 
-# ====================== 主菜单键盘（已去掉鸟图标） ======================
+# ====================== 主菜单键盘（已彻底去掉图标） ======================
 def get_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔍 查询代币"), KeyboardButton(text="🎮 小游戏")],
-            [KeyboardButton(text="🎟️ 抽奖"), KeyboardButton(text="我的 X 主页")],   # ← 已去掉鸟图标
+            [KeyboardButton(text="🎟️ 抽奖"), KeyboardButton(text="我的 X 主页")],   # ← 无图标版本
             [KeyboardButton(text="⚙️ 设置"), KeyboardButton(text="📋 帮助")]
         ],
         resize_keyboard=True
@@ -68,7 +68,7 @@ async def menu_game(message: Message):
 async def menu_lottery(message: Message):
     await message.answer("🎟️ 抽奖功能开发中...\n示例：/lottery 10 奖品名称")
 
-# ====================== 我的 X 主页（已去掉图标） ======================
+# ====================== 我的 X 主页（关键修复） ======================
 @dp.message(lambda m: m.text == "我的 X 主页")
 async def menu_x_profile(message: Message):
     text = f"""🐦 **我的 X 主页**
