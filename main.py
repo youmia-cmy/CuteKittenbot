@@ -10,8 +10,7 @@ import aiohttp
 
 # ====================== 配置 ======================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-ADMIN_IDS_STR = os.getenv("ADMIN_IDS", "")
-ADMIN_IDS = [int(x.strip()) for x in ADMIN_IDS_STR.split(",") if x.strip()]
+ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -19,56 +18,48 @@ bot = Bot(
 )
 dp = Dispatcher()
 
-logging.info(f"当前管理员 ID 列表: {ADMIN_IDS}")
+logging.info(f"🚀 启动成功 | 当前管理员 ID: {ADMIN_IDS}")
 
 # ====================== 管理员检查 ======================
 def is_admin(user_id: int) -> bool:
     return user_id in ADMIN_IDS
 
-# ====================== 基础命令 ======================
+# ====================== 命令 ======================
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    await message.answer(f"😺 喵～ 机器人启动成功！\n你的ID: {message.from_user.id}\n管理员列表: {ADMIN_IDS}")
+    await message.answer(f"😺 喵～ 启动成功！\n你的用户ID: <code>{message.from_user.id}</code>", parse_mode="HTML")
+
+@dp.message(Command("myid"))
+async def cmd_myid(message: Message):
+    await message.answer(f"🆔 你的用户 ID 是：\n<code>{message.from_user.id}</code>\n\n请把这个数字添加到 Railway 的 ADMIN_IDS 变量中", parse_mode="HTML")
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
     await message.answer(
         "📋 <b>可用命令：</b>\n\n"
         "/start - 启动机器人\n"
+        "/myid - 显示你的用户ID\n"
         "/help - 显示帮助\n"
         "/token <合约地址> - 查询代币\n"
         "/mute - 全体禁言（仅管理员）\n"
-        "/unmute - 解除禁言（仅管理员）\n"
-        "/kick - 移除用户（回复消息）\n"
-        "/ban - 封禁用户（回复消息）"
+        "/unmute - 解除禁言（仅管理员）"
     )
 
-# ====================== 管理命令 ======================
 @dp.message(Command("mute"))
 async def cmd_mute(message: Message):
     if not is_admin(message.from_user.id):
-        await message.answer(f"❌ 此命令仅管理员可用\n你的ID: {message.from_user.id}\n管理员ID: {ADMIN_IDS}")
+        await message.answer(f"❌ 仅管理员可用\n你的ID: {message.from_user.id}\n管理员列表: {ADMIN_IDS}")
         return
     await message.answer("✅ 已执行全体禁言（当前为提示模式）")
 
 @dp.message(Command("unmute"))
 async def cmd_unmute(message: Message):
     if not is_admin(message.from_user.id):
-        await message.answer(f"❌ 此命令仅管理员可用\n你的ID: {message.from_user.id}")
+        await message.answer(f"❌ 仅管理员可用\n你的ID: {message.from_user.id}")
         return
     await message.answer("✅ 已解除全体禁言（当前为提示模式）")
 
-@dp.message(Command("kick"))
-async def cmd_kick(message: Message):
-    if not is_admin(message.from_user.id):
-        await message.answer("❌ 此命令仅管理员可用")
-        return
-    if not message.reply_to_message:
-        await message.answer("请回复要踢出的用户消息")
-        return
-    await message.answer("👢 已尝试移除用户（功能待完善）")
-
-# ====================== 代币查询（保持可用） ======================
+# 代币查询保持可用
 @dp.message(Command("token"))
 async def cmd_token(message: Message):
     parts = message.text.split(maxsplit=1)
@@ -91,10 +82,8 @@ async def cmd_token(message: Message):
         except Exception:
             await message.answer("查询失败")
 
-# ====================== 启动 ======================
 async def main():
     logging.basicConfig(level=logging.INFO)
-    logging.info(f"🚀 机器人启动成功 | 当前管理员: {ADMIN_IDS}")
     await bot.delete_webhook(drop_pending_updates=True)
     await dp.start_polling(bot)
 
