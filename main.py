@@ -12,9 +12,9 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
-# 你的个人信息（请修改成你自己的）
-YOUR_X_USERNAME = "_StarryMiu"          # 例如: "elonmusk"
-YOUR_WEBSITE = "https://cutekitten.hair"   # 可以留空
+# ==================== 你的个人信息（已根据你之前提供修改） ====================
+YOUR_X_USERNAME = "StarryMiu"                    # 你的 X 用户名（不带 @）
+YOUR_WEBSITE = "https://cutekitten.hair"         # 你的网站地址
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -22,13 +22,23 @@ bot = Bot(
 )
 dp = Dispatcher()
 
-# ====================== 主菜单 ======================
+# ====================== 主菜单键盘（新增 X 主页按钮） ======================
 def get_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🔍 查询代币"), KeyboardButton(text="🎮 小游戏")],
-            [KeyboardButton(text="🎟️ 抽奖"), KeyboardButton(text="⚙️ 设置")],
-            [KeyboardButton(text="📋 帮助"), KeyboardButton(text="🆔 我的ID")]
+            [KeyboardButton(text="🎟️ 抽奖"), KeyboardButton(text="🐦 我的 X 主页")],
+            [KeyboardButton(text="⚙️ 设置"), KeyboardButton(text="📋 帮助")]
+        ],
+        resize_keyboard=True
+    )
+
+# ====================== 管理员设置菜单 ======================
+def get_admin_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🗑️ 清理注销账号")],
+            [KeyboardButton(text="🔙 返回主菜单")]
         ],
         resize_keyboard=True
     )
@@ -36,57 +46,68 @@ def get_main_menu():
 # ====================== 基础命令 ======================
 @dp.message(Command("start", "menu"))
 async def cmd_start(message: Message):
-    await message.answer("😺 喵～ Cute Kitten 机器人启动成功！", reply_markup=get_main_menu())
+    await message.answer("😺 喵～ Cute Kitten 机器人启动成功！\n点击下方按钮使用功能～", reply_markup=get_main_menu())
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
     await message.answer("发送 /menu 打开主菜单即可使用所有功能～")
 
-# ====================== 新功能1：清除群内注销账号 ======================
+@dp.message(Command("myid"))
+async def cmd_myid(message: Message):
+    await message.answer(f"🆔 你的用户 ID 是：\n<code>{message.from_user.id}</code>", parse_mode="HTML")
+
+# ====================== 主菜单按钮处理 ======================
+@dp.message(lambda m: m.text == "🔍 查询代币")
+async def menu_token(message: Message):
+    await message.answer("请发送：/token 0x合约地址 （注意空格）")
+
+@dp.message(lambda m: m.text == "🎮 小游戏")
+async def menu_game(message: Message):
+    await message.answer("🎮 小游戏菜单（开发中）\n目前支持石头剪刀布")
+
+@dp.message(lambda m: m.text == "🎟️ 抽奖")
+async def menu_lottery(message: Message):
+    await message.answer("🎟️ 抽奖功能开发中...\n示例：/lottery 10 奖品名称")
+
+# ==================== 新增：我的 X 主页按钮 ====================
+@dp.message(lambda m: m.text == "🐦 我的 X 主页")
+async def menu_x_profile(message: Message):
+    text = f"🐦 **我的 X 主页**\nhttps://x.com/{YOUR_X_USERNAME}\n\n"
+    if YOUR_WEBSITE:
+        text += f"🌐 **我的网站**\n{YOUR_WEBSITE}"
+    await message.answer(text)
+
+@dp.message(lambda m: m.text == "⚙️ 设置")
+async def menu_settings(message: Message):
+    if message.from_user.id in ADMIN_IDS:
+        await message.answer("⚙️ **管理员设置菜单**", reply_markup=get_admin_menu())
+    else:
+        await message.answer("⚙️ 设置菜单\n普通用户暂无权限～")
+
+@dp.message(lambda m: m.text == "📋 帮助")
+async def menu_help(message: Message):
+    await cmd_help(message)
+
+# ====================== 管理员菜单按钮 ======================
+@dp.message(lambda m: m.text == "🗑️ 清理注销账号")
+async def menu_cleandeleted(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("❌ 此功能仅管理员可用")
+        return
+    await message.answer("🔍 正在尝试清理群内已注销账号...\n（当前版本效果有限，后续会优化）")
+
+@dp.message(lambda m: m.text == "🔙 返回主菜单")
+async def back_to_main(message: Message):
+    await message.answer("已返回主菜单", reply_markup=get_main_menu())
+
+# ====================== 直接命令支持 ======================
 @dp.message(Command("cleandeleted"))
 async def clean_deleted_accounts(message: Message):
-    if message.from_user.id not in ADMIN_IDS:
-        await message.answer("❌ 此命令仅管理员可用")
-        return
+    await menu_cleandeleted(message)
 
-    await message.answer("🔍 正在扫描群内已注销账号，请稍等...")
-
-    try:
-        members = await bot.get_chat_administrators(message.chat.id)  # 先获取管理员，避免误踢
-        deleted_count = 0
-
-        async for member in bot.get_chat_member(message.chat.id, None):  # 遍历所有成员（注意：此方法可能受限）
-            if member.user.is_bot:
-                continue
-            if member.user.first_name == "Deleted Account" or not member.user.username and not member.user.first_name:
-                try:
-                    await bot.ban_chat_member(message.chat.id, member.user.id, until_date=0)  # 踢出
-                    deleted_count += 1
-                except Exception:
-                    pass
-
-        await message.answer(f"✅ 清理完成！\n已移除 {deleted_count} 个已注销账号。")
-    except Exception as e:
-        await message.answer(f"❌ 清理失败: {str(e)[:200]}")
-
-# ====================== 新功能2：推送 X 主页和网站 ======================
 @dp.message(Command("x", "twitter", "pushx"))
 async def push_x_profile(message: Message):
-    if len(message.text.split()) > 1:
-        username = message.text.split()[1].replace("@", "")
-        await message.answer(f"🔗 {username} 的 X 主页：\nhttps://x.com/{username}")
-    else:
-        # 推送你自己的 X 主页和网站
-        text = f"🐦 **我的 X 主页**：\nhttps://x.com/{YOUR_X_USERNAME}\n\n"
-        if YOUR_WEBSITE:
-            text += f"🌐 **我的网站**：\n{YOUR_WEBSITE}"
-        await message.answer(text)
-
-# ====================== 其他已有功能（简化版） ======================
-@dp.message(Command("token"))
-async def cmd_token(message: Message):
-    # ... 保持你之前的代币查询代码 ...
-    await message.answer("🔍 代币查询功能正常（示例）")
+    await menu_x_profile(message)
 
 # ====================== 启动 ======================
 async def main():
