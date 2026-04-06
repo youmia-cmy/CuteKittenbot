@@ -12,9 +12,9 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
-# ====================== 你的个人信息 ======================
-YOUR_X_USERNAME = "StarryMiu"
-YOUR_WEBSITE = "https://cutekitten.hair/"        # ← 已修正为你的正确网站
+# ====================== 你的个人信息（已修正） ======================
+YOUR_X_USERNAME = "_StarryMiu"                   # ← 已修正为带下划线的用户名
+YOUR_WEBSITE = "https://cutekitten.hair/"        # 你的网站
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -49,14 +49,7 @@ async def cmd_start(message: Message):
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
-    await message.answer(
-        "📋 <b>可用命令：</b>\n\n"
-        "/start 或 /menu - 打开主菜单\n"
-        "/help - 显示帮助\n"
-        "/token <合约地址> - 查询代币\n"
-        "/myid - 显示你的用户ID",
-        reply_markup=get_main_menu()
-    )
+    await message.answer("发送 /menu 打开主菜单即可使用所有功能～")
 
 @dp.message(Command("myid"))
 async def cmd_myid(message: Message):
@@ -69,15 +62,13 @@ async def menu_token(message: Message):
 
 @dp.message(lambda m: m.text == "🎮 小游戏")
 async def menu_game(message: Message):
-    await message.answer(
-        "🎮 **小游戏菜单**\n\n目前支持：\n• 石头剪刀布（已可用）",
-        reply_markup=get_rps_keyboard()
-    )
+    await message.answer("🎮 小游戏菜单（开发中）\n目前支持石头剪刀布", reply_markup=get_rps_keyboard())
 
 @dp.message(lambda m: m.text == "🎟️ 抽奖")
 async def menu_lottery(message: Message):
     await message.answer("🎟️ 抽奖功能开发中...\n示例：/lottery 10 奖品名称")
 
+# ====================== 我的 X 主页（已修正） ======================
 @dp.message(lambda m: m.text == "🐦 我的 X 主页")
 async def menu_x_profile(message: Message):
     text = f"""🐦 **我的 X 主页**
@@ -90,7 +81,7 @@ https://x.com/{YOUR_X_USERNAME}
 @dp.message(lambda m: m.text == "⚙️ 设置")
 async def menu_settings(message: Message):
     if message.from_user.id in ADMIN_IDS:
-        await message.answer("⚙️ **管理员设置菜单**\n\n可用命令：\n/mute - 全体禁言\n/unmute - 解除禁言\n/kick - 踢人（回复消息）\n/cleandeleted - 清理注销账号")
+        await message.answer("⚙️ **管理员设置菜单**\n\n可用命令：\n/mute - 全体禁言\n/unmute - 解除禁言\n/kick - 踢人（回复消息）")
     else:
         await message.answer("⚙️ 设置菜单\n普通用户暂无权限～")
 
