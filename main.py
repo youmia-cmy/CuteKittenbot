@@ -12,9 +12,9 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
-# ==================== 你的个人信息（已根据你之前提供修改） ====================
-YOUR_X_USERNAME = "StarryMiu"                    # 你的 X 用户名（不带 @）
-YOUR_WEBSITE = "https://cutekitten.hair"         # 你的网站地址
+# 你的个人信息
+YOUR_X_USERNAME = "StarryMiu"
+YOUR_WEBSITE = "https://cutekitten.hair"
 
 bot = Bot(
     token=BOT_TOKEN,
@@ -22,7 +22,7 @@ bot = Bot(
 )
 dp = Dispatcher()
 
-# ====================== 主菜单键盘（新增 X 主页按钮） ======================
+# ====================== 主菜单 ======================
 def get_main_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -69,12 +69,9 @@ async def menu_game(message: Message):
 async def menu_lottery(message: Message):
     await message.answer("🎟️ 抽奖功能开发中...\n示例：/lottery 10 奖品名称")
 
-# ==================== 新增：我的 X 主页按钮 ====================
 @dp.message(lambda m: m.text == "🐦 我的 X 主页")
 async def menu_x_profile(message: Message):
-    text = f"🐦 **我的 X 主页**\nhttps://x.com/{YOUR_X_USERNAME}\n\n"
-    if YOUR_WEBSITE:
-        text += f"🌐 **我的网站**\n{YOUR_WEBSITE}"
+    text = f"🐦 **我的 X 主页**\nhttps://x.com/{YOUR_X_USERNAME}\n\n🌐 **我的网站**\n{YOUR_WEBSITE}"
     await message.answer(text)
 
 @dp.message(lambda m: m.text == "⚙️ 设置")
@@ -88,26 +85,41 @@ async def menu_settings(message: Message):
 async def menu_help(message: Message):
     await cmd_help(message)
 
-# ====================== 管理员菜单按钮 ======================
+# ====================== 清理注销账号（改进版） ======================
 @dp.message(lambda m: m.text == "🗑️ 清理注销账号")
 async def menu_cleandeleted(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         await message.answer("❌ 此功能仅管理员可用")
         return
-    await message.answer("🔍 正在尝试清理群内已注销账号...\n（当前版本效果有限，后续会优化）")
 
-@dp.message(lambda m: m.text == "🔙 返回主菜单")
-async def back_to_main(message: Message):
-    await message.answer("已返回主菜单", reply_markup=get_main_menu())
+    await message.answer(
+        "🗑️ **清理已注销账号**\n\n"
+        "机器人无法自动扫描全群。\n\n"
+        "**推荐操作方式：**\n"
+        "1. 在群里找到显示为 “Deleted Account” 的消息\n"
+        "2. **回复那条消息**\n"
+        "3. 发送 `/kick`\n\n"
+        "这样就能准确踢出该已注销用户。\n\n"
+        "需要清理多个时，重复以上步骤即可。"
+    )
 
-# ====================== 直接命令支持 ======================
-@dp.message(Command("cleandeleted"))
-async def clean_deleted_accounts(message: Message):
-    await menu_cleandeleted(message)
+# ====================== 踢人命令（配合清理使用） ======================
+@dp.message(Command("kick"))
+async def cmd_kick(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        await message.answer("❌ 此命令仅管理员可用")
+        return
 
-@dp.message(Command("x", "twitter", "pushx"))
-async def push_x_profile(message: Message):
-    await menu_x_profile(message)
+    if not message.reply_to_message:
+        await message.answer("请回复要踢出的用户消息，然后再发送 /kick")
+        return
+
+    user = message.reply_to_message.from_user
+    try:
+        await bot.ban_chat_member(message.chat.id, user.id, until_date=30)  # 30秒后自动解封 = 踢出
+        await message.answer(f"✅ 已成功踢出用户：\n{user.first_name} (ID: {user.id})")
+    except Exception as e:
+        await message.answer(f"❌ 踢出失败: {str(e)[:100]}")
 
 # ====================== 启动 ======================
 async def main():
