@@ -4,87 +4,77 @@ import os
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message
-from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
-from aiohttp import web
 import aiohttp
 
-# ====================== 配置 ======================
+# 配置
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
-    raise ValueError("❌ BOT_TOKEN 未设置！请在 Railway 变量中添加")
+    raise ValueError("❌ BOT_TOKEN 未设置！请检查 Railway 变量")
 
-BOT = Bot(token=BOT_TOKEN, parse_mode="HTML")
+bot = Bot(token=BOT_TOKEN, parse_mode="HTML")
 dp = Dispatcher()
 
-# ====================== 命令 ======================
+# ==================== 命令处理 ====================
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
-    await message.answer("😺 喵～ Cute Kitten 机器人已通过 Webhook 启动成功！\n发送 /help 查看命令")
+    await message.answer("😺 喵～ Cute Kitten 机器人启动成功！\n\n试试发送 /help")
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
     await message.answer(
         "📋 <b>可用命令：</b>\n"
-        "/start - 启动\n"
-        "/help - 帮助\n"
-        "/token <合约地址> - 查询代币\n"
-        "/game - 小游戏（待完善）\n"
-        "/lottery - 抽奖（待完善）"
+        "/start - 启动机器人\n"
+        "/help - 显示帮助\n"
+        "/token <合约地址> - 查询代币（注意空格）\n"
+        "/game - 小游戏（待加）\n"
+        "/lottery - 抽奖（待加）"
     )
 
 @dp.message(Command("token"))
 async def cmd_token(message: Message):
-    parts = message.text.split()
+    parts = message.text.split(maxsplit=1)
     if len(parts) < 2:
-        await message.answer("用法：/token <合约地址>\n例如：/token 0x...")
+        await message.answer("❌ 用法错误！\n正确格式必须有空格：\n/token 0x你的合约地址")
         return
+
     address = parts[1].strip()
-    await message.answer("🔍 正在查询，请稍等...")
+    await message.answer("🔍 正在从 DexScreener 查询，请稍等...")
 
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(f"https://api.dexscreener.com/latest/dex/tokens/{address}") as resp:
-                data = await resp.json()
-                if not data.get("pairs"):
-                    await message.answer("未找到交易对")
+            url = f"https://api.dexscreener.com/latest/dex/tokens/{address}"
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    await message.answer("❌ 查询失败，请检查合约地址")
                     return
-                pair = data["pairs"][0]
-                await message.answer(
-                    f"🪙 <b>{pair['baseToken']['name']}</b> ({pair['baseToken']['symbol']})\n"
-                    f"价格: ${pair.get('priceUsd', 'N/A')}\n"
-                    f"流动性: ${pair['liquidity']['usd']:,.0f}"
-                )
+                data = await resp.json()
+
+            if not data.get("pairs"):
+                await message.answer("❌ 未找到该合约的交易对")
+                return
+
+            pair = data["pairs"][0]
+            text = f"""🪙 <b>{pair['baseToken']['name']}</b> ({pair['baseToken']['symbol']})
+
+💰 价格: ${pair.get('priceUsd', 'N/A')}
+💧 流动性: ${pair['liquidity']['usd']:,.0f}
+📊 市值: ${pair.get('fdv', 'N/A'):,.0f}
+🔗 链: {pair['chainId'].upper()}"""
+
+            await message.answer(text)
         except Exception as e:
-            await message.answer(f"查询失败: {str(e)[:100]}")
+            await message.answer(f"❌ 查询出错: {str(e)[:150]}")
 
-# ====================== Webhook 设置 ======================
-async def on_startup(bot: Bot):
-    webhook_url = os.getenv("WEBHOOK_URL")  # Railway 会自动提供域名
-    if webhook_url:
-        await bot.set_webhook(f"{webhook_url}/webhook")
-        logging.info(f"✅ Webhook 已设置: {webhook_url}/webhook")
-    else:
-        logging.warning("⚠️ WEBHOOK_URL 未设置，将使用 polling")
-
+# ==================== 启动 ====================
 async def main():
     logging.basicConfig(level=logging.INFO)
-    logging.info("🚀 Cute Kitten 机器人启动中...")
+    logging.info("🚀 Cute Kitten 机器人正在启动...")
 
-    # 启动 webhook
-    app = web.Application()
-    SimpleRequestHandler(dispatcher=dp, bot=BOT).register(app, path="/webhook")
-    setup_application(app, dp, bot=BOT)
+    # 强制删除旧 webhook，防止冲突
+    await bot.delete_webhook(drop_pending_updates=True)
+    logging.info("✅ 已删除旧 webhook，切换到 Polling 模式")
 
-    runner = web.AppRunner(app)
-    await runner.setup()
-
-    # Railway 提供的端口
-    port = int(os.getenv("PORT", 8080))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-
-    logging.info(f"✅ Webhook 服务已在端口 {port} 启动")
-    await asyncio.Event().wait()  # 保持运行
+    await dp.start_polling(bot, skip_updates=True)
 
 if __name__ == "__main__":
     asyncio.run(main())
