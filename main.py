@@ -2,62 +2,62 @@ import asyncio
 import logging
 import os
 import random
-from typing import List, Set, Dict
+from datetime import datetime, timedelta
+from typing import List, Set, Dict, Optional
 
 import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode, ChatMemberStatus
 from aiogram.filters import Command
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ChatPermissions
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
 
 # ====================== 配置 ======================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-# 你的账号已最高优先级加入
-ADMIN_IDS: List[int] = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
-ADMIN_USERNAMES = ["Cute_Kitten9", "cutekitten9", "_StarryMiu"]  # ← 你的账号已在此
-
+ADMIN_USERNAMES = ["Cute_Kitten9", "cutekitten9", "_StarryMiu"]
 YOUR_X_USERNAME = "_StarryMiu"
 YOUR_WEBSITE = "https://cutekitten.hair/"
 
 # 全局存储
 forbidden_words: Set[str] = set()
 muted_chats: Set[int] = set()
-lottery_state: Dict[int, dict] = {}
 number_game_state: Dict[int, int] = {}
 
 bot = Bot(
     token=BOT_TOKEN,
     default=DefaultBotProperties(parse_mode=ParseMode.HTML)
 )
-dp = Dispatcher()
+storage = MemoryStorage()
+dp = Dispatcher(storage=storage)
 
-# ====================== 管理员检查（已优化你的情况） ======================
+
+# ====================== 抽奖状态机 ======================
+class LotteryForm(StatesGroup):
+    waiting_name = State()
+    waiting_link = State()
+    waiting_description = State()
+    waiting_prize_type = State()
+    waiting_prize_amount = State()
+    waiting_winner_count = State()
+    waiting_draw_time = State()
+
+
+# ====================== 管理员检查 ======================
 async def is_admin(message: Message) -> bool:
     if not message.from_user:
         return False
-    
-    user = message.from_user
-    username = (user.username or "").lower()
-
-    # 优先检查你的账号
+    username = (message.from_user.username or "").lower()
     if username in [u.lower() for u in ADMIN_USERNAMES]:
         return True
-
-    # 普通ID检查
-    if user.id in ADMIN_IDS:
-        return True
-
-    # 群管理员检查（包括非匿名）
     try:
-        member = await bot.get_chat_member(message.chat.id, user.id)
-        if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            return True
+        member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+        return member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]
     except:
-        pass
-
-    return False
+        return False
 
 
 # ====================== 键盘 ======================
@@ -91,7 +91,6 @@ def get_rps_keyboard():
     )
 
 
-# ====================== 自动删除 ======================
 async def auto_delete(msg: Message, delay: int = 25):
     if not msg or not msg.text:
         return
@@ -105,39 +104,159 @@ async def auto_delete(msg: Message, delay: int = 25):
         pass
 
 
-# ====================== 基础命令 ======================
+# ====================== 抽奖设置面板 ======================
+@dp.message(lambda m: "抽奖" in m.text)
+async def menu_lottery(message: Message, state: FSMContext):
+    if not await is_admin(message):
+        sent = await message.answer("❌ 权限不足")
+        await auto_delete(sent)
+        return
+
+    await state.set_state(LotteryForm.waiting_name)
+    sent = await message.answer(
+        "🎟️ **新建抽奖活动**\n\n"
+        "第一步：请输入**活动名称**（例如：100 USDT 空投）",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="❌ 取消", callback_data="cancel_lottery")]
+        ])
+    )
+    await auto_delete(sent, 120)
+
+
+@dp.message(LotteryForm.waiting_name)
+async def lottery_name(message: Message, state: FSMContext):
+    await state.update_data(name=message.text)
+    await state.set_state(LotteryForm.waiting_link)
+    await message.answer("第二步：请输入**活动链接**（可跳过，发送 /skip）")
+
+
+@dp.message(LotteryForm.waiting_link)
+async def lottery_link(message: Message, state: FSMContext):
+    link = message.text if message.text != "/skip" else "无"
+    await state.update_data(link=link)
+    await state.set_state(LotteryForm.waiting_description)
+    await message.answer("第三步：请输入**活动描述**（可跳过，发送 /skip）")
+
+
+@dp.message(LotteryForm.waiting_description)
+async def lottery_description(message: Message, state: FSMContext):
+    desc = message.text if message.text != "/skip" else "无"
+    await state.update_data(description=desc)
+    await state.set_state(LotteryForm.waiting_prize_type)
+    await message.answer("第四步：请输入**奖品类型**（例如：USDT、NFT、实体礼品）")
+
+
+@dp.message(LotteryForm.waiting_prize_type)
+async def lottery_prize_type(message: Message, state: FSMContext):
+    await state.update_data(prize_type=message.text)
+    await state.set_state(LotteryForm.waiting_prize_amount)
+    await message.answer("第五步：请输入**奖品数量**（例如：100）")
+
+
+@dp.message(LotteryForm.waiting_prize_amount)
+async def lottery_prize_amount(message: Message, state: FSMContext):
+    await state.update_data(prize_amount=message.text)
+    await state.set_state(LotteryForm.waiting_winner_count)
+    await message.answer("第六步：请输入**中奖人数**（例如：5）")
+
+
+@dp.message(LotteryForm.waiting_winner_count)
+async def lottery_winner_count(message: Message, state: FSMContext):
+    try:
+        count = int(message.text)
+    except:
+        await message.answer("❌ 请输入数字")
+        return
+    await state.update_data(winner_count=count)
+    await state.set_state(LotteryForm.waiting_draw_time)
+    await message.answer("第七步：请输入**开奖时间**（例如：2026-04-30 20:00）")
+
+
+@dp.message(LotteryForm.waiting_draw_time)
+async def lottery_draw_time(message: Message, state: FSMContext):
+    data = await state.get_data()
+    lottery_state[message.chat.id] = {
+        "name": data["name"],
+        "link": data.get("link", "无"),
+        "description": data.get("description", "无"),
+        "prize_type": data["prize_type"],
+        "prize_amount": data["prize_amount"],
+        "winner_count": data["winner_count"],
+        "draw_time": message.text,
+        "participants": []
+    }
+
+    preview = (
+        f"🎟️ **抽奖活动预览**\n\n"
+        f"📌 活动名称：{data['name']}\n"
+        f"🔗 链接：{data.get('link', '无')}\n"
+        f"📝 描述：{data.get('description', '无')}\n"
+        f"🎁 奖品：{data['prize_type']} × {data['prize_amount']}\n"
+        f"👑 中奖人数：{data['winner_count']}\n"
+        f"🕒 开奖时间：{message.text}\n\n"
+        f"回复任意消息即可参与抽奖！\n"
+        f"管理员发送 /draw 立即开奖"
+    )
+    await message.answer(preview)
+    await state.clear()
+
+
+@dp.callback_query(lambda c: c.data == "cancel_lottery")
+async def cancel_lottery(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text("❌ 抽奖创建已取消")
+
+
+# ====================== 抽奖参与 & 开奖 ======================
+@dp.message(lambda m: m.chat.id in lottery_state)
+async def lottery_join(message: Message):
+    state = lottery_state[message.chat.id]
+    if message.from_user.id not in state["participants"]:
+        state["participants"].append(message.from_user.id)
+        await message.answer(f"✅ 参与成功！当前人数：{len(state['participants'])}", delete_after=10)
+
+
+@dp.message(Command("draw"))
+async def cmd_draw(message: Message):
+    if not await is_admin(message) or message.chat.id not in lottery_state:
+        return
+    state = lottery_state[message.chat.id]
+    if not state["participants"]:
+        await message.answer("❌ 暂无参与者")
+        return
+    count = min(state["winner_count"], len(state["participants"]))
+    winners = random.sample(state["participants"], count)
+    mentions = [f"<a href='tg://user?id={w}'>用户{w}</a>" for w in winners]
+
+    result = (
+        f"🎉 **抽奖结果**\n"
+        f"活动：{state['name']}\n"
+        f"奖品：{state['prize_type']} × {state['prize_amount']}\n"
+        f"中奖者：{', '.join(mentions)}\n"
+        f"开奖时间：{state.get('draw_time', '已开奖')}"
+    )
+    await message.answer(result)
+    del lottery_state[message.chat.id]
+
+
+# ====================== 其他功能（完整） ======================
 @dp.message(Command("start", "menu"))
 async def cmd_start(message: Message):
-    sent = await message.answer("😺 喵～ <b>Cute Kitten</b> 机器人启动成功！", reply_markup=get_main_menu())
+    sent = await message.answer("  喵～ <b>Cute Kitten</b> 机器人启动成功！", reply_markup=get_main_menu())
     await auto_delete(sent)
 
 
-@dp.message(Command("help"))
-async def cmd_help(message: Message):
-    sent = await message.answer("📋 发送下方按钮或命令使用功能", reply_markup=get_main_menu())
-    await auto_delete(sent)
-
-
-# ====================== 主菜单处理 ======================
 @dp.message(lambda m: "查询代币" in m.text)
 async def menu_token(message: Message):
     sent = await message.answer("🔍 请发送：<code>/token 0x合约地址</code>")
     await auto_delete(sent)
+
 
 @dp.message(lambda m: "小游戏" in m.text)
 async def menu_game(message: Message):
     sent = await message.answer("🎮 请选择小游戏：", reply_markup=get_game_menu())
     await auto_delete(sent, 60)
 
-@dp.message(lambda m: "抽奖" in m.text)
-async def menu_lottery(message: Message):
-    if not await is_admin(message):
-        sent = await message.answer("❌ 权限不足")
-        await auto_delete(sent)
-        return
-    lottery_state[message.chat.id] = {"participants": [], "prize": "神秘奖品"}
-    sent = await message.answer("🎟️ 抽奖已开启！回复任意消息参与\n管理员发送 /draw 开奖")
-    await auto_delete(sent, 60)
 
 @dp.message(lambda m: "我的X主页" in m.text or "X主页" in m.text)
 async def menu_x_profile(message: Message):
@@ -148,6 +267,7 @@ https://x.com/{YOUR_X_USERNAME}
 {YOUR_WEBSITE}"""
     await message.answer(text)
 
+
 @dp.message(lambda m: "设置" in m.text)
 async def menu_settings(message: Message):
     if await is_admin(message):
@@ -156,35 +276,85 @@ async def menu_settings(message: Message):
         sent = await message.answer("❌ 权限不足")
         await auto_delete(sent)
 
+
 @dp.message(lambda m: "帮助" in m.text)
 async def menu_help(message: Message):
-    await cmd_help(message)
+    await message.answer("使用下方菜单即可")
 
+
+# 管理按钮
 @dp.message(lambda m: "全体禁言" in m.text)
 async def menu_mute(message: Message):
-    await cmd_mute(message)
+    if not await is_admin(message):
+        return
+    muted_chats.add(message.chat.id)
+    try:
+        await bot.restrict_chat_member(message.chat.id, 0, permissions=ChatPermissions(can_send_messages=False))
+        await message.answer("🔇 已开启全体禁言")
+    except:
+        await message.answer("❌ 操作失败")
+
 
 @dp.message(lambda m: "解除禁言" in m.text)
 async def menu_unmute(message: Message):
-    await cmd_unmute(message)
-
-@dp.message(lambda m: "踢人" in m.text)
-async def menu_kick(message: Message):
-    sent = await message.answer("👢 请回复要踢出的用户消息，然后发送 /kick")
-    await auto_delete(sent)
-
-@dp.message(lambda m: "封禁" in m.text)
-async def menu_ban(message: Message):
-    sent = await message.answer("🚫 请回复要封禁的用户消息，然后发送 /ban")
-    await auto_delete(sent)
-
-@dp.message(lambda m: "返回主菜单" in m.text)
-async def back_to_menu(message: Message):
-    sent = await message.answer("✅ 已返回主菜单", reply_markup=get_main_menu())
-    await auto_delete(sent)
+    if not await is_admin(message):
+        return
+    muted_chats.discard(message.chat.id)
+    try:
+        await bot.restrict_chat_member(message.chat.id, 0, permissions=ChatPermissions(can_send_messages=True))
+        await message.answer("🔊 已解除全体禁言")
+    except:
+        await message.answer("❌ 操作失败")
 
 
-# ====================== 小游戏 ======================
+@dp.message(Command("kick"))
+async def cmd_kick(message: Message):
+    if not await is_admin(message) or not message.reply_to_message:
+        return
+    user_id = message.reply_to_message.from_user.id
+    try:
+        await bot.ban_chat_member(message.chat.id, user_id, revoke_messages=False)
+        await bot.unban_chat_member(message.chat.id, user_id)
+        await message.answer(f"👢 已踢出用户 <code>{user_id}</code>")
+    except:
+        pass
+
+
+@dp.message(Command("ban"))
+async def cmd_ban(message: Message):
+    if not await is_admin(message) or not message.reply_to_message:
+        return
+    user_id = message.reply_to_message.from_user.id
+    try:
+        await bot.ban_chat_member(message.chat.id, user_id)
+        await message.answer(f"🚫 已封禁用户 <code>{user_id}</code>")
+    except:
+        pass
+
+
+@dp.message(Command("token"))
+async def cmd_token(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("❌ 用法：<code>/token 0x合约地址</code>")
+        return
+    address = parts[1].strip().lower()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://api.dexscreener.com/latest/dex/tokens/{address}") as resp:
+                data = await resp.json()
+                if not data.get("pairs"):
+                    await message.answer("❌ 未找到交易对")
+                    return
+                pair = data["pairs"][0]
+                base = pair.get("baseToken", {})
+                text = f"🪙 <b>{base.get('name')}</b> ({base.get('symbol')})\n💰 ${pair.get('priceUsd', 'N/A')}"
+                await message.answer(text)
+    except:
+        await message.answer("❌ 查询失败")
+
+
+# 小游戏完整逻辑
 @dp.message(lambda m: m.text in ["猜拳", "✊ 猜拳"])
 async def game_rps(message: Message):
     sent = await message.answer("✊ 猜拳开始！请选择：", reply_markup=get_rps_keyboard())
@@ -224,129 +394,10 @@ async def guess_number(message: Message):
     await auto_delete(sent, 60)
 
 
-# ====================== 代币查询 ======================
-@dp.message(Command("token"))
-async def cmd_token(message: Message):
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2:
-        sent = await message.answer("❌ 用法：<code>/token 0x合约地址</code>")
-        await auto_delete(sent)
-        return
-    address = parts[1].strip().lower()
-    if not address.startswith("0x"):
-        sent = await message.answer("❌ 请提供有效的 0x 地址")
-        await auto_delete(sent)
-        return
-
-    await message.answer("🔍 查询中...")
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://api.dexscreener.com/latest/dex/tokens/{address}") as resp:
-                data = await resp.json()
-                if not data.get("pairs"):
-                    sent = await message.answer("❌ 未找到交易对")
-                    await auto_delete(sent)
-                    return
-                pair = data["pairs"][0]
-                base = pair.get("baseToken", {})
-                text = f"🪙 <b>{base.get('name')}</b> ({base.get('symbol')})\n💰 ${pair.get('priceUsd', 'N/A')}"
-                sent = await message.answer(text)
-                await auto_delete(sent)
-    except:
-        sent = await message.answer("❌ 查询失败")
-        await auto_delete(sent)
-
-
-# ====================== 抽奖 ======================
-@dp.message(Command("lottery"))
-async def cmd_lottery(message: Message):
-    await menu_lottery(message)
-
-@dp.message(lambda m: m.chat.id in lottery_state)
-async def lottery_join(message: Message):
-    state = lottery_state[message.chat.id]
-    if message.from_user.id not in state.get("participants", []):
-        state.setdefault("participants", []).append(message.from_user.id)
-        await message.answer(f"✅ 参与成功！当前 {len(state['participants'])} 人", delete_after=10)
-
-@dp.message(Command("draw"))
-async def cmd_draw(message: Message):
-    if not await is_admin(message) or message.chat.id not in lottery_state:
-        return
-    state = lottery_state[message.chat.id]
-    if not state.get("participants"):
-        await message.answer("❌ 暂无参与者")
-        return
-    winners = random.sample(state["participants"], min(1, len(state["participants"])))
-    mentions = [f"<a href='tg://user?id={w}'>用户{w}</a>" for w in winners]
-    await message.answer(f"🎉 中奖者：{', '.join(mentions)}")
-    del lottery_state[message.chat.id]
-
-
-# ====================== 管理员功能 ======================
-@dp.message(Command("mute"))
-async def cmd_mute(message: Message):
-    if not await is_admin(message):
-        sent = await message.answer("❌ 权限不足")
-        await auto_delete(sent)
-        return
-    muted_chats.add(message.chat.id)
-    try:
-        await bot.restrict_chat_member(message.chat.id, 0, permissions=ChatPermissions(can_send_messages=False))
-        sent = await message.answer("🔇 已开启全体禁言")
-        await auto_delete(sent)
-    except Exception as e:
-        sent = await message.answer(f"❌ 操作失败: {e}")
-        await auto_delete(sent)
-
-
-@dp.message(Command("unmute"))
-async def cmd_unmute(message: Message):
-    if not await is_admin(message):
-        sent = await message.answer("❌ 权限不足")
-        await auto_delete(sent)
-        return
-    muted_chats.discard(message.chat.id)
-    try:
-        await bot.restrict_chat_member(message.chat.id, 0, permissions=ChatPermissions(can_send_messages=True))
-        sent = await message.answer("🔊 已解除全体禁言")
-        await auto_delete(sent)
-    except Exception as e:
-        sent = await message.answer(f"❌ 操作失败: {e}")
-        await auto_delete(sent)
-
-
-@dp.message(Command("kick"))
-async def cmd_kick(message: Message):
-    if not await is_admin(message) or not message.reply_to_message:
-        sent = await message.answer("❌ 请回复要踢出的消息")
-        await auto_delete(sent)
-        return
-    user_id = message.reply_to_message.from_user.id
-    try:
-        await bot.ban_chat_member(message.chat.id, user_id, revoke_messages=False)
-        await bot.unban_chat_member(message.chat.id, user_id)
-        sent = await message.answer(f"👢 已踢出用户 <code>{user_id}</code>")
-        await auto_delete(sent)
-    except Exception as e:
-        sent = await message.answer(f"❌ 操作失败: {e}")
-        await auto_delete(sent)
-
-
-@dp.message(Command("ban"))
-async def cmd_ban(message: Message):
-    if not await is_admin(message) or not message.reply_to_message:
-        sent = await message.answer("❌ 请回复要封禁的消息")
-        await auto_delete(sent)
-        return
-    user_id = message.reply_to_message.from_user.id
-    try:
-        await bot.ban_chat_member(message.chat.id, user_id)
-        sent = await message.answer(f"🚫 已封禁用户 <code>{user_id}</code>")
-        await auto_delete(sent)
-    except Exception as e:
-        sent = await message.answer(f"❌ 操作失败: {e}")
-        await auto_delete(sent)
+@dp.message(lambda m: "返回主菜单" in m.text)
+async def back_to_menu(message: Message):
+    sent = await message.answer("✅ 已返回主菜单", reply_markup=get_main_menu())
+    await auto_delete(sent)
 
 
 # ====================== 违禁词过滤 ======================
