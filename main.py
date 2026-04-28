@@ -8,7 +8,7 @@ import aiohttp
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode, ChatMemberStatus
-from aiogram.filters import Command
+from aiogram.filters import Command, StateFilter
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ChatPermissions, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -114,21 +114,21 @@ async def menu_lottery(message: Message, state: FSMContext):
     await state.set_state(LotteryForm.waiting_name)
     await message.answer(
         "🎟️ **新建抽奖活动**\n\n"
-        "第一步：请输入 **活动名称**（例如：100 USDT 空投）",
+        "第一步：请输入 **活动名称**（支持中文/英文，例如：100 USDT 空投 或 NFT 抽奖）",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="❌ 取消", callback_data="cancel_lottery")]
         ])
     )
 
 
-@dp.message(LotteryForm.waiting_name)
+@dp.message(StateFilter(LotteryForm.waiting_name))
 async def process_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text.strip())
     await state.set_state(LotteryForm.waiting_link)
     await message.answer("第二步：请输入 **活动链接**（可发送 /skip 跳过）")
 
 
-@dp.message(LotteryForm.waiting_link)
+@dp.message(StateFilter(LotteryForm.waiting_link))
 async def process_link(message: Message, state: FSMContext):
     link = "无" if message.text.strip() == "/skip" else message.text.strip()
     await state.update_data(link=link)
@@ -136,7 +136,7 @@ async def process_link(message: Message, state: FSMContext):
     await message.answer("第三步：请输入 **活动描述**（可发送 /skip 跳过）")
 
 
-@dp.message(LotteryForm.waiting_description)
+@dp.message(StateFilter(LotteryForm.waiting_description))
 async def process_description(message: Message, state: FSMContext):
     desc = "无" if message.text.strip() == "/skip" else message.text.strip()
     await state.update_data(description=desc)
@@ -144,21 +144,21 @@ async def process_description(message: Message, state: FSMContext):
     await message.answer("第四步：请输入 **奖品类型**（例如：USDT、NFT、实体礼品）")
 
 
-@dp.message(LotteryForm.waiting_prize_type)
+@dp.message(StateFilter(LotteryForm.waiting_prize_type))
 async def process_prize_type(message: Message, state: FSMContext):
     await state.update_data(prize_type=message.text.strip())
     await state.set_state(LotteryForm.waiting_prize_amount)
     await message.answer("第五步：请输入 **奖品数量**（例如：100）")
 
 
-@dp.message(LotteryForm.waiting_prize_amount)
+@dp.message(StateFilter(LotteryForm.waiting_prize_amount))
 async def process_prize_amount(message: Message, state: FSMContext):
     await state.update_data(prize_amount=message.text.strip())
     await state.set_state(LotteryForm.waiting_winner_count)
     await message.answer("第六步：请输入 **中奖人数**（例如：5）")
 
 
-@dp.message(LotteryForm.waiting_winner_count)
+@dp.message(StateFilter(LotteryForm.waiting_winner_count))
 async def process_winner_count(message: Message, state: FSMContext):
     try:
         count = int(message.text.strip())
@@ -169,7 +169,7 @@ async def process_winner_count(message: Message, state: FSMContext):
         await message.answer("❌ 请输入正确的数字")
 
 
-@dp.message(LotteryForm.waiting_draw_time)
+@dp.message(StateFilter(LotteryForm.waiting_draw_time))
 async def process_draw_time(message: Message, state: FSMContext):
     data = await state.get_data()
     chat_id = message.chat.id
@@ -222,7 +222,7 @@ async def publish_lottery(callback: CallbackQuery):
         f"👑 中奖人数：{state['winner_count']} 人\n"
         f"🕒 开奖时间：{state['draw_time']}\n\n"
         f"❤️ 回复任意消息参与抽奖！\n"
-        f"管理员可发送 /draw 开奖"
+        f"管理员发送 /draw 开奖"
     )
 
     await callback.message.edit_text(text)
@@ -233,13 +233,12 @@ async def publish_lottery(callback: CallbackQuery):
 async def cancel_lottery(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     chat_id = callback.message.chat.id
-    if chat_id in lottery_state:
-        del lottery_state[chat_id]
+    lottery_state.pop(chat_id, None)
     await callback.message.edit_text("❌ 抽奖已取消")
     await callback.answer()
 
 
-# ====================== 抽奖参与 & 开奖 ======================
+# ====================== 抽奖参与 ======================
 @dp.message(lambda m: m.chat.id in lottery_state)
 async def lottery_join(message: Message):
     state = lottery_state[message.chat.id]
@@ -248,6 +247,7 @@ async def lottery_join(message: Message):
         await message.answer(f"✅ 参与成功！当前人数：{len(state['participants'])}", delete_after=10)
 
 
+# ====================== 开奖 ======================
 @dp.message(Command("draw"))
 async def cmd_draw(message: Message):
     if not await is_admin(message) or message.chat.id not in lottery_state:
@@ -259,7 +259,6 @@ async def cmd_draw(message: Message):
     count = min(state["winner_count"], len(state["participants"]))
     winners = random.sample(state["participants"], count)
     mentions = [f"<a href='tg://user?id={w}'>用户{w}</a>" for w in winners]
-
     await message.answer(
         f"🎉 <b>抽奖结果</b>\n\n"
         f"活动：{state['name']}\n"
@@ -272,7 +271,7 @@ async def cmd_draw(message: Message):
 # ====================== 基础命令 ======================
 @dp.message(Command("start", "menu"))
 async def cmd_start(message: Message):
-    await message.answer(" a 喵～ <b>Cute Kitten</b> 机器人启动成功！", reply_markup=get_main_menu())
+    await message.answer("😺 喵～ <b>Cute Kitten</b> 机器人启动成功！", reply_markup=get_main_menu())
 
 
 @dp.message(lambda m: "查询代币" in m.text)
