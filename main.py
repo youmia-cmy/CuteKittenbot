@@ -177,17 +177,6 @@ def get_rps_keyboard():
     )
 
 
-# ====================== 抽奖状态机 ======================
-class LotteryForm(StatesGroup):
-    waiting_name = State()
-    waiting_link = State()
-    waiting_description = State()
-    waiting_prize_type = State()
-    waiting_prize_amount = State()
-    waiting_winner_count = State()
-    waiting_draw_time = State()
-
-
 # ====================== 管理员检查 ======================
 async def is_admin(message: Message) -> bool:
     if not message.from_user:
@@ -211,15 +200,10 @@ async def start_divine(message: Message):
     )
 
 
-@dp.message()
+@dp.message(lambda m: m.text and len(m.text.strip()) >= 2 and m.text.strip() not in ["返回主菜单", "石头", "剪刀", "布", "猜拳", "猜数字", "查询代币", "抽奖", "小游戏", "我的X主页", "设置", "帮助", "全体禁言", "解除禁言", "踢人", "封禁"])
 async def process_divine(message: Message):
-    """起卦处理（放在最后，带过滤）"""
-    text = (message.text or "").strip()
-    if len(text) < 2:
-        return
-
-    exclude = {"返回主菜单", "石头", "剪刀", "布", "猜拳", "猜数字", "查询代币", "抽奖", "小游戏", "我的X主页", "设置", "帮助", "全体禁言", "解除禁言", "踢人", "封禁"}
-    if text in exclude or text.startswith(('/', '🎟️', '🎮', '🔍')):
+    text = message.text.strip()
+    if text.startswith(('/', '🎟️', '🎮', '🔍')):
         return
 
     data = generate_hexagram(text)
@@ -256,13 +240,22 @@ async def detail_divine(callback: CallbackQuery):
     await callback.answer()
 
 
-# ====================== 抽奖功能 ======================
+# ====================== 抽奖状态机 ======================
+class LotteryForm(StatesGroup):
+    waiting_name = State()
+    waiting_link = State()
+    waiting_description = State()
+    waiting_prize_type = State()
+    waiting_prize_amount = State()
+    waiting_winner_count = State()
+    waiting_draw_time = State()
+
+
 @dp.message(lambda m: "抽奖" in m.text)
 async def menu_lottery(message: Message, state: FSMContext):
     if not await is_admin(message):
         await message.answer("❌ 权限不足")
         return
-
     await state.set_state(LotteryForm.waiting_name)
     await message.answer(
         "🎟️ <b>新建抽奖活动</b>\n\n第一步：请输入 <b>活动名称</b>",
