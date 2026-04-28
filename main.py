@@ -123,6 +123,9 @@ async def menu_lottery(message: Message, state: FSMContext):
 
 @dp.message(StateFilter(LotteryForm.waiting_name))
 async def process_name(message: Message, state: FSMContext):
+    if not message.text or not message.text.strip():
+        await message.answer("❌ 活动名称不能为空，请重新输入")
+        return
     await state.update_data(name=message.text.strip())
     await state.set_state(LotteryForm.waiting_link)
     await message.answer("第二步：请输入 **活动链接**（可发送 /skip 跳过）")
@@ -205,6 +208,7 @@ async def process_draw_time(message: Message, state: FSMContext):
     await state.clear()
 
 
+# ====================== 发布 ======================
 @dp.callback_query(lambda c: c.data == "publish_lottery")
 async def publish_lottery(callback: CallbackQuery):
     chat_id = callback.message.chat.id
@@ -221,12 +225,12 @@ async def publish_lottery(callback: CallbackQuery):
         f"🎁 奖品：{state['prize_type']} × {state['prize_amount']}\n"
         f"👑 中奖人数：{state['winner_count']} 人\n"
         f"🕒 开奖时间：{state['draw_time']}\n\n"
-        f"❤️ 回复任意消息参与抽奖！\n"
+        f"❤️ 回复任意消息即可参与抽奖！\n"
         f"管理员发送 /draw 开奖"
     )
 
     await callback.message.edit_text(text)
-    await callback.answer("✅ 已发布到群里！")
+    await callback.answer("✅ 活动已发布到群里！")
 
 
 @dp.callback_query(lambda c: c.data == "cancel_lottery")
@@ -238,13 +242,13 @@ async def cancel_lottery(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# ====================== 抽奖参与 ======================
-@dp.message(lambda m: m.chat.id in lottery_state)
+# ====================== 参与抽奖 ======================
+@dp.message(lambda m: m.chat.id in lottery_state and not m.text.startswith('/'))
 async def lottery_join(message: Message):
     state = lottery_state[message.chat.id]
     if message.from_user.id not in state["participants"]:
         state["participants"].append(message.from_user.id)
-        await message.answer(f"✅ 参与成功！当前人数：{len(state['participants'])}", delete_after=10)
+        await message.answer(f"✅ 参与成功！当前人数：{len(state['participants'])}", delete_after=8)
 
 
 # ====================== 开奖 ======================
@@ -256,19 +260,29 @@ async def cmd_draw(message: Message):
     if not state["participants"]:
         await message.answer("❌ 暂无参与者")
         return
+
     count = min(state["winner_count"], len(state["participants"]))
     winners = random.sample(state["participants"], count)
-    mentions = [f"<a href='tg://user?id={w}'>用户{w}</a>" for w in winners]
+    mentions = []
+    for wid in winners:
+        try:
+            user = await bot.get_chat(wid)
+            name = user.first_name or f"用户{wid}"
+            mentions.append(f"<a href='tg://user?id={wid}'>{name}</a>")
+        except:
+            mentions.append(f"用户{wid}")
+
     await message.answer(
-        f"🎉 <b>抽奖结果</b>\n\n"
+        f"🎉 <b>抽奖结果公布</b>\n\n"
         f"活动：{state['name']}\n"
         f"奖品：{state['prize_type']} × {state['prize_amount']}\n"
-        f"中奖者：{', '.join(mentions)}"
+        f"👑 中奖者：{', '.join(mentions)}\n"
+        f"开奖时间：{state['draw_time']}"
     )
     del lottery_state[message.chat.id]
 
 
-# ====================== 基础命令 ======================
+# ====================== 其他功能 ======================
 @dp.message(Command("start", "menu"))
 async def cmd_start(message: Message):
     await message.answer("😺 喵～ <b>Cute Kitten</b> 机器人启动成功！", reply_markup=get_main_menu())
@@ -293,23 +307,9 @@ https://x.com/{YOUR_X_USERNAME}
 {YOUR_WEBSITE}""")
 
 
-@dp.message(lambda m: "设置" in m.text)
-async def menu_settings(message: Message):
-    if await is_admin(message):
-        await message.answer("⚙️ 管理员设置已开启", reply_markup=get_main_menu())
-    else:
-        await message.answer("❌ 权限不足")
-
-
-@dp.message(lambda m: "帮助" in m.text)
-async def menu_help(message: Message):
-    await message.answer("使用下方菜单即可")
-
-
 @dp.message(lambda m: "全体禁言" in m.text)
 async def menu_mute(message: Message):
-    if not await is_admin(message):
-        return
+    if not await is_admin(message): return
     muted_chats.add(message.chat.id)
     try:
         await bot.restrict_chat_member(message.chat.id, 0, permissions=ChatPermissions(can_send_messages=False))
@@ -320,8 +320,7 @@ async def menu_mute(message: Message):
 
 @dp.message(lambda m: "解除禁言" in m.text)
 async def menu_unmute(message: Message):
-    if not await is_admin(message):
-        return
+    if not await is_admin(message): return
     muted_chats.discard(message.chat.id)
     try:
         await bot.restrict_chat_member(message.chat.id, 0, permissions=ChatPermissions(can_send_messages=True))
@@ -330,22 +329,52 @@ async def menu_unmute(message: Message):
         await message.answer("❌ 操作失败")
 
 
-@dp.message(lambda m: "踢人" in m.text)
-async def menu_kick(message: Message):
-    await message.answer("👢 请回复要踢出的用户消息，然后发送 /kick")
+@dp.message(Command("kick"))
+async def cmd_kick(message: Message):
+    if not await is_admin(message) or not message.reply_to_message: return
+    user_id = message.reply_to_message.from_user.id
+    try:
+        await bot.ban_chat_member(message.chat.id, user_id, revoke_messages=False)
+        await bot.unban_chat_member(message.chat.id, user_id)
+        await message.answer(f"👢 已踢出用户 <code>{user_id}</code>")
+    except:
+        pass
 
 
-@dp.message(lambda m: "封禁" in m.text)
-async def menu_ban(message: Message):
-    await message.answer("🚫 请回复要封禁的用户消息，然后发送 /ban")
+@dp.message(Command("ban"))
+async def cmd_ban(message: Message):
+    if not await is_admin(message) or not message.reply_to_message: return
+    user_id = message.reply_to_message.from_user.id
+    try:
+        await bot.ban_chat_member(message.chat.id, user_id)
+        await message.answer(f"🚫 已封禁用户 <code>{user_id}</code>")
+    except:
+        pass
 
 
-@dp.message(lambda m: "返回主菜单" in m.text)
-async def back_to_menu(message: Message):
-    await message.answer("✅ 已返回主菜单", reply_markup=get_main_menu())
+@dp.message(Command("token"))
+async def cmd_token(message: Message):
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("❌ 用法：<code>/token 0x合约地址</code>")
+        return
+    address = parts[1].strip().lower()
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"https://api.dexscreener.com/latest/dex/tokens/{address}") as resp:
+                data = await resp.json()
+                if not data.get("pairs"):
+                    await message.answer("❌ 未找到交易对")
+                    return
+                pair = data["pairs"][0]
+                base = pair.get("baseToken", {})
+                text = f"🪙 <b>{base.get('name')}</b> ({base.get('symbol')})\n💰 ${pair.get('priceUsd', 'N/A')}"
+                await message.answer(text)
+    except:
+        await message.answer("❌ 查询失败")
 
 
-# ====================== 小游戏 ======================
+# 小游戏
 @dp.message(lambda m: m.text in ["猜拳", "✊ 猜拳"])
 async def game_rps(message: Message):
     await message.answer("✊ 猜拳开始！请选择：", reply_markup=get_rps_keyboard())
@@ -384,27 +413,9 @@ async def guess_number(message: Message):
         await message.answer("📉 太大了～")
 
 
-# ====================== 代币查询 ======================
-@dp.message(Command("token"))
-async def cmd_token(message: Message):
-    parts = message.text.split(maxsplit=1)
-    if len(parts) < 2:
-        await message.answer("❌ 用法：<code>/token 0x合约地址</code>")
-        return
-    address = parts[1].strip().lower()
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"https://api.dexscreener.com/latest/dex/tokens/{address}") as resp:
-                data = await resp.json()
-                if not data.get("pairs"):
-                    await message.answer("❌ 未找到交易对")
-                    return
-                pair = data["pairs"][0]
-                base = pair.get("baseToken", {})
-                text = f"🪙 <b>{base.get('name')}</b> ({base.get('symbol')})\n💰 ${pair.get('priceUsd', 'N/A')}"
-                await message.answer(text)
-    except:
-        await message.answer("❌ 查询失败")
+@dp.message(lambda m: "返回主菜单" in m.text)
+async def back_to_menu(message: Message):
+    await message.answer("✅ 已返回主菜单", reply_markup=get_main_menu())
 
 
 # ====================== 违禁词过滤 ======================
