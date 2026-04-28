@@ -37,71 +37,71 @@ storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
 
 
-# ====================== 完整64卦数据库（含详细解卦） ======================
+# ====================== 完整64卦数据库 ======================
 HEXAGRAMS = {
     1: {"name": "乾为天", "fortune": "大吉", "judgment": "元亨利贞。", "detail": "乾卦象征天道刚健，自强不息。利于积极行动、开创事业，但需注意勿过刚则折。"},
     2: {"name": "坤为地", "fortune": "吉", "judgment": "元亨，利牝马之贞。", "detail": "坤卦主柔顺、厚德载物。宜守成、包容、顺势而为，不宜主动争先。"},
-    3: {"name": "水雷屯", "fortune": "中吉", "judgment": "元亨利贞。勿用有攸往，利建侯。", "detail": "屯卦象征初生艰难。起步阶段需耐心积累，不可急进，宜建立基础。"},
-    4: {"name": "山水蒙", "fortune": "平", "judgment": "亨。匪我求童蒙，童蒙求我。", "detail": "蒙卦代表启蒙、学习。需虚心求教，师长指引方能进步。"},
-    5: {"name": "水天需", "fortune": "吉", "judgment": "有孚，光亨，贞吉。需于酒食。", "detail": "需卦象征等待时机。耐心等待，时机成熟自然有利。"},
-    6: {"name": "天水讼", "fortune": "凶", "judgment": "有孚窒惕，中吉，终凶。", "detail": "讼卦主争讼、口舌是非。宜调解，避免正面冲突。"},
-    7: {"name": "地水师", "fortune": "平", "judgment": "贞丈人吉，无咎。", "detail": "师卦象征用兵、组织。需严明纪律，方能成事。"},
-    8: {"name": "水地比", "fortune": "大吉", "judgment": "吉。原筮元永贞，无咎。", "detail": "比卦主亲比、团结。上下和睦则大吉。"},
-    9: {"name": "风天小畜", "fortune": "平", "judgment": "亨。小畜，密云不雨，自我西郊。", "detail": "小畜卦象征小有积蓄。宜蓄势待发，不可大举。"},
+    3: {"name": "水雷屯", "fortune": "中吉", "judgment": "元亨利贞。勿用有攸往，利建侯。", "detail": "屯卦象征初生艰难。起步阶段需耐心积累，不可急进。"},
+    4: {"name": "山水蒙", "fortune": "平", "judgment": "亨。匪我求童蒙，童蒙求我。", "detail": "蒙卦代表启蒙、学习。需虚心求教。"},
+    5: {"name": "水天需", "fortune": "吉", "judgment": "有孚，光亨，贞吉。需于酒食。", "detail": "需卦象征等待时机。耐心等待则利。"},
+    6: {"name": "天水讼", "fortune": "凶", "judgment": "有孚窒惕，中吉，终凶。", "detail": "讼卦主争讼。宜调解，避免冲突。"},
+    7: {"name": "地水师", "fortune": "平", "judgment": "贞丈人吉，无咎。", "detail": "师卦象征用兵、组织。需严明纪律。"},
+    8: {"name": "水地比", "fortune": "大吉", "judgment": "吉。原筮元永贞，无咎。", "detail": "比卦主团结。上下和睦大吉。"},
+    9: {"name": "风天小畜", "fortune": "平", "judgment": "亨。小畜，密云不雨，自我西郊。", "detail": "小畜卦象征小有积蓄。宜蓄势待发。"},
     10: {"name": "天泽履", "fortune": "吉", "judgment": "履虎尾，不咥人，亨。", "detail": "履卦象征小心行走。谨慎行事，可化险为夷。"},
     11: {"name": "地天泰", "fortune": "大吉", "judgment": "小往大来，吉亨。", "detail": "泰卦主通泰、亨通。天地交泰，万事顺利。"},
-    12: {"name": "天地否", "fortune": "凶", "judgment": "否之匪人，不利君子贞，大往小来。", "detail": "否卦主闭塞不通。宜守正待时，不可强求。"},
+    12: {"name": "天地否", "fortune": "凶", "judgment": "否之匪人，不利君子贞，大往小来。", "detail": "否卦主闭塞不通。宜守正待时。"},
     13: {"name": "天火同人", "fortune": "吉", "judgment": "同人于野，亨。利涉大川，利君子贞。", "detail": "同人卦象征与人和同。团结一致则事成。"},
-    14: {"name": "火天大有", "fortune": "大吉", "judgment": "大有，元亨。", "detail": "大有卦象征大有收获。富足之时更需谦虚谨慎。"},
-    15: {"name": "地山谦", "fortune": "吉", "judgment": "谦，亨。君子有终。", "detail": "谦卦主谦逊受益。谦虚则得人助，终有好结果。"},
-    16: {"name": "雷地豫", "fortune": "吉", "judgment": "豫，利建侯行师。", "detail": "豫卦象征愉悦、安乐。宜把握时机，行动有利。"},
-    17: {"name": "泽雷随", "fortune": "吉", "judgment": "随，元亨利贞，无咎。", "detail": "随卦主随从、顺势。随和则无咎，但不可盲目跟随。"},
-    18: {"name": "山风蛊", "fortune": "平", "judgment": "蛊，元亨。利涉大川，先甲三日，后甲三日。", "detail": "蛊卦象征腐败、整治。需革除旧弊，方可重振。"},
-    19: {"name": "地泽临", "fortune": "吉", "judgment": "临，元亨利贞。至于八月有凶。", "detail": "临卦主临近、监督。宜亲近民众，但需防后期衰退。"},
-    20: {"name": "风地观", "fortune": "平", "judgment": "观，盥而不荐，有孚颙若。", "detail": "观卦象征观察、瞻仰。宜以德服人，树立榜样。"},
-    21: {"name": "火雷噬嗑", "fortune": "吉", "judgment": "噬嗑，亨。利用狱。", "detail": "噬嗑卦象征咬合、去除障碍。需果断处理问题。"},
-    22: {"name": "山火贲", "fortune": "平", "judgment": "贲，亨。小利有攸往。", "detail": "贲卦主文饰、修饰。宜注重外在形象，但不可过度。"},
-    23: {"name": "山地剥", "fortune": "凶", "judgment": "剥，不利有攸往。", "detail": "剥卦主剥落、衰败。宜静守，等待转机。"},
-    24: {"name": "地雷复", "fortune": "大吉", "judgment": "复，亨。出入无疾，朋来无咎。反复其道，七日来复，利有攸往。", "detail": "复卦象征复苏、回归正道。阳气复生，大有希望。"},
-    25: {"name": "天雷无妄", "fortune": "吉", "judgment": "无妄，元亨利贞。其匪正有眚，不利有攸往。", "detail": "无妄卦主真实无妄。心诚则灵，妄动则凶。"},
-    26: {"name": "山天大畜", "fortune": "吉", "judgment": "大畜，利贞。不家食吉，利涉大川。", "detail": "大畜卦象征大有积蓄。厚积薄发，可成大事。"},
-    27: {"name": "山雷颐", "fortune": "平", "judgment": "颐，贞吉。观颐，自求口实。", "detail": "颐卦主养身、养德。需注重修养与饮食。"},
-    28: {"name": "泽风大过", "fortune": "凶", "judgment": "大过，栋桡。利有攸往，亨。", "detail": "大过卦象征过度。需勇于变革，但要把握分寸。"},
-    29: {"name": "坎为水", "fortune": "平", "judgment": "习坎，有孚，维心亨。行有尚。", "detail": "坎卦主险阻、重重困难。需诚信方能渡险。"},
-    30: {"name": "离为火", "fortune": "吉", "judgment": "离，利贞。亨。畜牝牛吉。", "detail": "离卦象征光明、依附。依附正道则吉。"},
-    31: {"name": "泽山咸", "fortune": "吉", "judgment": "咸，亨利贞。取女吉。", "detail": "咸卦主感应、交感。真诚相感则事成。"},
-    32: {"name": "雷风恒", "fortune": "吉", "judgment": "恒，亨。无咎，利贞。利有攸往。", "detail": "恒卦象征持久、恒心。持之以恒则成。"},
-    33: {"name": "天山遯", "fortune": "平", "judgment": "遯，亨。小利贞。", "detail": "遯卦主退避、隐退。时机不利时宜暂时退守。"},
-    34: {"name": "雷天大壮", "fortune": "吉", "judgment": "大壮，利贞。", "detail": "大壮卦象征强盛。宜守正，不可妄动。"},
-    35: {"name": "火地晋", "fortune": "吉", "judgment": "晋，康侯用锡马蕃庶，昼日三接。", "detail": "晋卦主晋升、发展。积极进取则获赏。"},
-    36: {"name": "地火明夷", "fortune": "平", "judgment": "明夷，利艰贞。", "detail": "明夷卦象征光明受伤。宜韬光养晦，等待时机。"},
-    37: {"name": "风火家人", "fortune": "吉", "judgment": "家人，利女贞。", "detail": "家人卦主家庭、和睦。正家风则家道兴。"},
-    38: {"name": "火泽睽", "fortune": "平", "judgment": "睽，小事吉。", "detail": "睽卦主乖离、意见不合。小事可成，大事难就。"},
-    39: {"name": "水山蹇", "fortune": "平", "judgment": "蹇，利西南，不利东北。利见大人。", "detail": "蹇卦象征险阻。宜向西南，求贤助。"},
+    14: {"name": "火天大有", "fortune": "大吉", "judgment": "大有，元亨。", "detail": "大有卦象征大有收获。富足之时更需谦虚。"},
+    15: {"name": "地山谦", "fortune": "吉", "judgment": "谦，亨。君子有终。", "detail": "谦卦主谦逊受益。谦虚则得人助。"},
+    16: {"name": "雷地豫", "fortune": "吉", "judgment": "豫，利建侯行师。", "detail": "豫卦象征愉悦。把握时机，行动有利。"},
+    17: {"name": "泽雷随", "fortune": "吉", "judgment": "随，元亨利贞，无咎。", "detail": "随卦主随从、顺势。随和则无咎。"},
+    18: {"name": "山风蛊", "fortune": "平", "judgment": "蛊，元亨。利涉大川，先甲三日，后甲三日。", "detail": "蛊卦象征整治腐败。需革除旧弊。"},
+    19: {"name": "地泽临", "fortune": "吉", "judgment": "临，元亨利贞。至于八月有凶。", "detail": "临卦主临近、监督。宜亲近民众。"},
+    20: {"name": "风地观", "fortune": "平", "judgment": "观，盥而不荐，有孚颙若。", "detail": "观卦象征观察。宜以德服人。"},
+    21: {"name": "火雷噬嗑", "fortune": "吉", "judgment": "噬嗑，亨。利用狱。", "detail": "噬嗑卦象征去除障碍。需果断处理。"},
+    22: {"name": "山火贲", "fortune": "平", "judgment": "贲，亨。小利有攸往。", "detail": "贲卦主文饰。注重形象但不可过度。"},
+    23: {"name": "山地剥", "fortune": "凶", "judgment": "剥，不利有攸往。", "detail": "剥卦主衰败。宜静守等待转机。"},
+    24: {"name": "地雷复", "fortune": "大吉", "judgment": "复，亨。出入无疾，朋来无咎。反复其道，七日来复，利有攸往。", "detail": "复卦象征复苏。阳气复生，大有希望。"},
+    25: {"name": "天雷无妄", "fortune": "吉", "judgment": "无妄，元亨利贞。其匪正有眚，不利有攸往。", "detail": "无妄卦主真实无妄。心诚则灵。"},
+    26: {"name": "山天大畜", "fortune": "吉", "judgment": "大畜，利贞。不家食吉，利涉大川。", "detail": "大畜卦象征厚积薄发。"},
+    27: {"name": "山雷颐", "fortune": "平", "judgment": "颐，贞吉。观颐，自求口实。", "detail": "颐卦主养身养德。"},
+    28: {"name": "泽风大过", "fortune": "凶", "judgment": "大过，栋桡。利有攸往，亨。", "detail": "大过卦象征过度。需勇于变革。"},
+    29: {"name": "坎为水", "fortune": "平", "judgment": "习坎，有孚，维心亨。行有尚。", "detail": "坎卦主险阻。需诚信渡险。"},
+    30: {"name": "离为火", "fortune": "吉", "judgment": "离，利贞。亨。畜牝牛吉。", "detail": "离卦象征光明。依附正道则吉。"},
+    31: {"name": "泽山咸", "fortune": "吉", "judgment": "咸，亨利贞。取女吉。", "detail": "咸卦主感应。真诚相感则事成。"},
+    32: {"name": "雷风恒", "fortune": "吉", "judgment": "恒，亨。无咎，利贞。利有攸往。", "detail": "恒卦象征持久。持之以恒则成。"},
+    33: {"name": "天山遯", "fortune": "平", "judgment": "遯，亨。小利贞。", "detail": "遯卦主退避。时机不利宜暂退。"},
+    34: {"name": "雷天大壮", "fortune": "吉", "judgment": "大壮，利贞。", "detail": "大壮卦象征强盛。守正不妄动。"},
+    35: {"name": "火地晋", "fortune": "吉", "judgment": "晋，康侯用锡马蕃庶，昼日三接。", "detail": "晋卦主晋升。积极进取则获赏。"},
+    36: {"name": "地火明夷", "fortune": "平", "judgment": "明夷，利艰贞。", "detail": "明夷卦象征韬光养晦。"},
+    37: {"name": "风火家人", "fortune": "吉", "judgment": "家人，利女贞。", "detail": "家人卦主家庭和睦。正家风则兴。"},
+    38: {"name": "火泽睽", "fortune": "平", "judgment": "睽，小事吉。", "detail": "睽卦主意见不合。小事可成。"},
+    39: {"name": "水山蹇", "fortune": "平", "judgment": "蹇，利西南，不利东北。利见大人。", "detail": "蹇卦象征险阻。宜求贤助。"},
     40: {"name": "雷水解", "fortune": "吉", "judgment": "解，利西南。无所往，其来复吉。有攸往，夙吉。", "detail": "解卦主解除困难。及时行动则吉。"},
     41: {"name": "山泽损", "fortune": "平", "judgment": "损，有孚，元吉，无咎，可贞。利有攸往。", "detail": "损卦象征减损。损己利人则吉。"},
-    42: {"name": "风雷益", "fortune": "吉", "judgment": "益，利有攸往，利涉大川。", "detail": "益卦主增益、受益。施惠于人则获益。"},
-    43: {"name": "泽天夬", "fortune": "平", "judgment": "夬，扬于王庭，孚号有厉。告自邑，不利即戎。利有攸往。", "detail": "夬卦象征决断。需果断清除小人。"},
-    44: {"name": "天风姤", "fortune": "平", "judgment": "姤，女壮，勿用取女。", "detail": "姤卦主相遇。防小人接近，宜谨慎。"},
-    45: {"name": "泽地萃", "fortune": "吉", "judgment": "萃，亨。王假有庙，利见大人，亨。利贞。用大牲吉。利有攸往。", "detail": "萃卦主聚集、团结。聚众则力强。"},
-    46: {"name": "地风升", "fortune": "吉", "judgment": "升，元亨。用见大人，勿恤。南征吉。", "detail": "升卦象征上升、发展。循序渐进则大吉。"},
-    47: {"name": "泽水困", "fortune": "凶", "judgment": "困，亨。贞大人吉，无咎。有言不信。", "detail": "困卦主困境。守正则亨通，需耐心。"},
-    48: {"name": "水风井", "fortune": "平", "judgment": "井，改邑不改井。无丧无得。往来井井。汔至亦未繘井，羸其瓶，凶。", "detail": "井卦象征井水、养民。需维护根本，不可废弃。"},
-    49: {"name": "泽火革", "fortune": "吉", "judgment": "革，己日乃孚。元亨利贞。悔亡。", "detail": "革卦主变革。时机成熟时变革则吉。"},
-    50: {"name": "火风鼎", "fortune": "吉", "judgment": "鼎，元吉，亨。", "detail": "鼎卦象征鼎立、养贤。稳定则可成大器。"},
-    51: {"name": "震为雷", "fortune": "平", "judgment": "震，亨。震来虩虩，笑言哑哑。震惊百里，不丧匕鬯。", "detail": "震卦主震动、惊恐。临危不乱则吉。"},
-    52: {"name": "艮为山", "fortune": "平", "judgment": "艮，艮其背，不获其身。行其庭，不见其人。无咎。", "detail": "艮卦主停止、静止。当止则止。"},
-    53: {"name": "风山渐", "fortune": "吉", "judgment": "渐，女归吉。利贞。", "detail": "渐卦象征渐进、稳步发展。循序渐进则吉。"},
-    54: {"name": "雷泽归妹", "fortune": "平", "judgment": "归妹，征凶，无攸利。", "detail": "归妹卦主嫁娶。需正位，不可妄动。"},
-    55: {"name": "雷火丰", "fortune": "平", "judgment": "丰，亨。王假之，勿忧，宜日中。", "detail": "丰卦主丰盛。盛极则衰，宜居安思危。"},
-    56: {"name": "火山旅", "fortune": "平", "judgment": "旅，小亨。旅贞吉。", "detail": "旅卦象征旅行、在外。谨慎守正则吉。"},
-    57: {"name": "巽为风", "fortune": "平", "judgment": "巽，小亨。利有攸往，利见大人。", "detail": "巽卦主顺从、入木。柔顺则利。"},
-    58: {"name": "兑为泽", "fortune": "吉", "judgment": "兑，亨利贞。", "detail": "兑卦主喜悦、交流。和悦待人则吉。"},
-    59: {"name": "风水涣", "fortune": "平", "judgment": "涣，亨。王假有庙。利涉大川，利贞。", "detail": "涣卦主涣散、离散。宜聚合人心。"},
-    60: {"name": "水泽节", "fortune": "平", "judgment": "节，亨。苦节不可贞。", "detail": "节卦主节制、节约。适度节制则吉，过度则凶。"},
-    61: {"name": "风泽中孚", "fortune": "吉", "judgment": "中孚，豚鱼吉。利涉大川，利贞。", "detail": "中孚卦主诚信。心诚则灵，获吉。"},
-    62: {"name": "雷山小过", "fortune": "平", "judgment": "小过，亨利贞。可小事，不可大事。飞鸟遗之音，不宜上，宜下，大吉。", "detail": "小过卦主小有过越。小事可为，大事慎行。"},
-    63: {"name": "水火既济", "fortune": "吉", "judgment": "既济，亨。小利贞。初吉终乱。", "detail": "既济卦象征已完成。成功后仍需谨慎，防生变。"},
+    42: {"name": "风雷益", "fortune": "吉", "judgment": "益，利有攸往，利涉大川。", "detail": "益卦主增益。施惠于人则获益。"},
+    43: {"name": "泽天夬", "fortune": "平", "judgment": "夬，扬于王庭，孚号有厉。告自邑，不利即戎。利有攸往。", "detail": "夬卦象征决断。清除小人。"},
+    44: {"name": "天风姤", "fortune": "平", "judgment": "姤，女壮，勿用取女。", "detail": "姤卦主相遇。防小人。"},
+    45: {"name": "泽地萃", "fortune": "吉", "judgment": "萃，亨。王假有庙，利见大人，亨。利贞。用大牲吉。利有攸往。", "detail": "萃卦主聚集。聚众则力强。"},
+    46: {"name": "地风升", "fortune": "吉", "judgment": "升，元亨。用见大人，勿恤。南征吉。", "detail": "升卦象征上升。循序渐进则大吉。"},
+    47: {"name": "泽水困", "fortune": "凶", "judgment": "困，亨。贞大人吉，无咎。有言不信。", "detail": "困卦主困境。守正则亨通。"},
+    48: {"name": "水风井", "fortune": "平", "judgment": "井，改邑不改井。无丧无得。往来井井。汔至亦未繘井，羸其瓶，凶。", "detail": "井卦象征根本。需维护不可废弃。"},
+    49: {"name": "泽火革", "fortune": "吉", "judgment": "革，己日乃孚。元亨利贞。悔亡。", "detail": "革卦主变革。时机成熟则吉。"},
+    50: {"name": "火风鼎", "fortune": "吉", "judgment": "鼎，元吉，亨。", "detail": "鼎卦象征鼎立。稳定则成大器。"},
+    51: {"name": "震为雷", "fortune": "平", "judgment": "震，亨。震来虩虩，笑言哑哑。震惊百里，不丧匕鬯。", "detail": "震卦主震动。临危不乱则吉。"},
+    52: {"name": "艮为山", "fortune": "平", "judgment": "艮，艮其背，不获其身。行其庭，不见其人。无咎。", "detail": "艮卦主停止。当止则止。"},
+    53: {"name": "风山渐", "fortune": "吉", "judgment": "渐，女归吉。利贞。", "detail": "渐卦象征渐进。稳步发展则吉。"},
+    54: {"name": "雷泽归妹", "fortune": "平", "judgment": "归妹，征凶，无攸利。", "detail": "归妹卦主嫁娶。需正位。"},
+    55: {"name": "雷火丰", "fortune": "平", "judgment": "丰，亨。王假之，勿忧，宜日中。", "detail": "丰卦主丰盛。居安思危。"},
+    56: {"name": "火山旅", "fortune": "平", "judgment": "旅，小亨。旅贞吉。", "detail": "旅卦象征在外。谨慎守正则吉。"},
+    57: {"name": "巽为风", "fortune": "平", "judgment": "巽，小亨。利有攸往，利见大人。", "detail": "巽卦主顺从。柔顺则利。"},
+    58: {"name": "兑为泽", "fortune": "吉", "judgment": "兑，亨利贞。", "detail": "兑卦主喜悦。和悦待人则吉。"},
+    59: {"name": "风水涣", "fortune": "平", "judgment": "涣，亨。王假有庙。利涉大川，利贞。", "detail": "涣卦主涣散。宜聚合人心。"},
+    60: {"name": "水泽节", "fortune": "平", "judgment": "节，亨。苦节不可贞。", "detail": "节卦主节制。适度则吉。"},
+    61: {"name": "风泽中孚", "fortune": "吉", "judgment": "中孚，豚鱼吉。利涉大川，利贞。", "detail": "中孚卦主诚信。心诚则灵。"},
+    62: {"name": "雷山小过", "fortune": "平", "judgment": "小过，亨利贞。可小事，不可大事。飞鸟遗之音，不宜上，宜下，大吉。", "detail": "小过卦主小有过越。小事可为。"},
+    63: {"name": "水火既济", "fortune": "吉", "judgment": "既济，亨。小利贞。初吉终乱。", "detail": "既济卦象征已完成。成功后仍需谨慎。"},
     64: {"name": "火水未济", "fortune": "平", "judgment": "未济，亨。小狐汔济，濡其尾，无攸利。", "detail": "未济象征尚未完成。需继续努力，谨慎收尾。"}
 }
 
@@ -112,13 +112,10 @@ def generate_hexagram(user_input: str):
     seed_str = user_input + datetime.now().strftime("%Y%m%d%H%M%S%f")
     seed = int(hashlib.md5(seed_str.encode()).hexdigest(), 16)
     random.seed(seed)
-
     upper = random.randint(0, 7)
     lower = random.randint(0, 7)
     lines = [random.choice([0, 1]) for _ in range(6)]
-
     primary_num = (upper * 8) + lower + 1
-
     return {
         "primary_num": primary_num,
         "primary_name": HEXAGRAMS.get(primary_num, {"name": "未知卦"})["name"],
@@ -209,14 +206,14 @@ async def is_admin(message: Message) -> bool:
 @dp.message(lambda m: m.text in ["🌀 起卦", "起卦"])
 async def start_divine(message: Message):
     await message.answer(
-        "🔮 <b>请输入任意内容起卦</b>\n\n"
-        "例如：今天运势如何？\n明天适合跳槽吗？\n我该怎么做决定？",
+        "🔮 <b>请输入任意内容起卦</b>\n\n例如：今天运势如何？\n明天适合跳槽吗？",
         reply_markup=ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="返回主菜单")]], resize_keyboard=True)
     )
 
 
 @dp.message()
 async def process_divine(message: Message):
+    """起卦处理（放在最后，带过滤）"""
     text = (message.text or "").strip()
     if len(text) < 2:
         return
@@ -246,7 +243,6 @@ async def re_divine(callback: CallbackQuery):
 async def detail_divine(callback: CallbackQuery):
     num = int(callback.data.split("_")[1])
     info = HEXAGRAMS.get(num, {"name": "未知卦", "judgment": "", "detail": "暂无详细解读", "fortune": "平"})
-    
     text = f"""
 📖 <b>第 {num} 卦 · {info['name']}</b>
 
@@ -256,9 +252,8 @@ async def detail_divine(callback: CallbackQuery):
 <b>详细解卦</b>：
 {info.get('detail', '此卦需结合实际情况灵活解读。')}
     """.strip()
-    
     await callback.message.edit_text(text)
-    await callback.answer("✅ 详细解卦")
+    await callback.answer()
 
 
 # ====================== 抽奖功能 ======================
@@ -342,7 +337,16 @@ async def process_draw_time(message: Message, state: FSMContext):
         "participants": []
     }
 
-    preview = f"🎟️ <b>抽奖活动预览</b>\n\n📌 活动名称：{data['name']}\n🔗 链接：{data.get('link', '无')}\n📝 描述：{data.get('description', '无')}\n🎁 奖品：{data['prize_type']} × {data['prize_amount']}\n👑 中奖人数：{data['winner_count']} 人\n🕒 开奖时间：{message.text}\n\n回复任意消息即可参与！"
+    preview = (
+        f"🎟️ <b>抽奖活动预览</b>\n\n"
+        f"📌 活动名称：{data['name']}\n"
+        f"🔗 链接：{data.get('link', '无')}\n"
+        f"📝 描述：{data.get('description', '无')}\n"
+        f"🎁 奖品：{data['prize_type']} × {data['prize_amount']}\n"
+        f"👑 中奖人数：{data['winner_count']} 人\n"
+        f"🕒 开奖时间：{message.text}\n\n"
+        f"回复任意消息即可参与！"
+    )
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ 发布抽奖", callback_data="publish_lottery")],
@@ -361,7 +365,16 @@ async def publish_lottery(callback: CallbackQuery):
         return
 
     state = lottery_state[chat_id]
-    text = f"🎉 <b>抽奖活动正式发布！</b>\n\n📌 {state['name']}\n🔗 {state.get('link', '无')}\n📝 {state.get('description', '无')}\n🎁 奖品：{state['prize_type']} × {state['prize_amount']}\n👑 中奖人数：{state['winner_count']} 人\n🕒 开奖时间：{state['draw_time']}\n\n❤️ 回复任意消息即可参与抽奖！\n管理员发送 /draw 开奖"
+    text = (
+        f"🎉 <b>抽奖活动正式发布！</b>\n\n"
+        f"📌 {state['name']}\n"
+        f"🔗 {state.get('link', '无')}\n"
+        f"📝 {state.get('description', '无')}\n"
+        f"🎁 奖品：{state['prize_type']} × {state['prize_amount']}\n"
+        f"👑 中奖人数：{state['winner_count']} 人\n"
+        f"🕒 开奖时间：{state['draw_time']}\n\n"
+        f"❤️ 回复任意消息即可参与抽奖！\n管理员发送 /draw 开奖"
+    )
 
     await callback.message.edit_text(text)
     await callback.answer("✅ 活动已发布到群里！")
@@ -405,7 +418,11 @@ async def cmd_draw(message: Message):
             mentions.append(f"用户{wid}")
 
     await message.answer(
-        f"🎉 <b>抽奖结果公布</b>\n\n活动：{state['name']}\n奖品：{state['prize_type']} × {state['prize_amount']}\n👑 中奖者：{', '.join(mentions)}\n开奖时间：{state['draw_time']}"
+        f"🎉 <b>抽奖结果公布</b>\n\n"
+        f"活动：{state['name']}\n"
+        f"奖品：{state['prize_type']} × {state['prize_amount']}\n"
+        f"👑 中奖者：{', '.join(mentions)}\n"
+        f"开奖时间：{state['draw_time']}"
     )
     del lottery_state[message.chat.id]
 
@@ -546,7 +563,7 @@ async def back_to_menu(message: Message):
     await message.answer("✅ 已返回主菜单", reply_markup=get_main_menu())
 
 
-# ====================== 违禁词过滤 ======================
+# ====================== 违禁词过滤（最后） ======================
 @dp.message()
 async def word_filter(message: Message):
     if not message.text:
