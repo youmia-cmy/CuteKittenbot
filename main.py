@@ -14,8 +14,9 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ChatPerm
 # ====================== 配置 ======================
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
+# 你的账号已最高优先级加入
 ADMIN_IDS: List[int] = [int(x.strip()) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
-ADMIN_USERNAMES = ["Cute_Kitten9", "_StarryMiu", "cutekitten9"]
+ADMIN_USERNAMES = ["Cute_Kitten9", "cutekitten9", "_StarryMiu"]  # ← 你的账号已在此
 
 YOUR_X_USERNAME = "_StarryMiu"
 YOUR_WEBSITE = "https://cutekitten.hair/"
@@ -32,41 +33,30 @@ bot = Bot(
 )
 dp = Dispatcher()
 
-# ====================== 增强版管理员检查（支持匿名管理员） ======================
+# ====================== 管理员检查（已优化你的情况） ======================
 async def is_admin(message: Message) -> bool:
-    if not message.chat or message.chat.type == "private":
-        return True  # 私聊默认允许
-
+    if not message.from_user:
+        return False
+    
     user = message.from_user
-    user_id = user.id if user else None
-    username = (user.username or "").lower() if user else ""
+    username = (user.username or "").lower()
 
-    # 1. 硬编码管理员（你的账号）
-    if user_id in ADMIN_IDS or username in [u.lower() for u in ADMIN_USERNAMES]:
-        logging.info(f"✅ 硬编码管理员: {user_id} @{username}")
+    # 优先检查你的账号
+    if username in [u.lower() for u in ADMIN_USERNAMES]:
         return True
 
-    # 2. 匿名管理员处理（最关键修复）
-    if message.sender_chat and message.sender_chat.id == message.chat.id:
-        try:
-            # 检查发送者是否为群管理员
-            member = await bot.get_chat_member(message.chat.id, message.from_user.id)
-            if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-                logging.info(f"✅ 匿名管理员通过: {message.from_user.id}")
-                return True
-        except:
-            pass
+    # 普通ID检查
+    if user.id in ADMIN_IDS:
+        return True
 
-    # 3. 普通群管理员检查
+    # 群管理员检查（包括非匿名）
     try:
-        member = await bot.get_chat_member(message.chat.id, user_id)
+        member = await bot.get_chat_member(message.chat.id, user.id)
         if member.status in [ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR]:
-            logging.info(f"✅ 群管理员: {user_id}")
             return True
-    except Exception as e:
-        logging.warning(f"获取成员信息失败: {e}")
+    except:
+        pass
 
-    logging.warning(f"❌ 非管理员: {user_id} @{username}")
     return False
 
 
@@ -115,18 +105,6 @@ async def auto_delete(msg: Message, delay: int = 25):
         pass
 
 
-# ====================== 测试命令 ======================
-@dp.message(Command("testadmin"))
-async def test_admin(message: Message):
-    is_ad = await is_admin(message)
-    await message.answer(
-        f"🧪 <b>权限测试结果</b>\n"
-        f"用户ID: <code>{message.from_user.id}</code>\n"
-        f"用户名: @{message.from_user.username or '匿名'}\n"
-        f"是否管理员: {'✅ 是' if is_ad else '❌ 否'}"
-    )
-
-
 # ====================== 基础命令 ======================
 @dp.message(Command("start", "menu"))
 async def cmd_start(message: Message):
@@ -136,14 +114,11 @@ async def cmd_start(message: Message):
 
 @dp.message(Command("help"))
 async def cmd_help(message: Message):
-    sent = await message.answer(
-        "📋 <b>帮助</b>\n发送 /testadmin 可测试权限",
-        reply_markup=get_main_menu()
-    )
+    sent = await message.answer("📋 发送下方按钮或命令使用功能", reply_markup=get_main_menu())
     await auto_delete(sent)
 
 
-# ====================== 主菜单处理（完整） ======================
+# ====================== 主菜单处理 ======================
 @dp.message(lambda m: "查询代币" in m.text)
 async def menu_token(message: Message):
     sent = await message.answer("🔍 请发送：<code>/token 0x合约地址</code>")
@@ -157,11 +132,11 @@ async def menu_game(message: Message):
 @dp.message(lambda m: "抽奖" in m.text)
 async def menu_lottery(message: Message):
     if not await is_admin(message):
-        sent = await message.answer("❌ 权限不足\n请发送 /testadmin 测试")
+        sent = await message.answer("❌ 权限不足")
         await auto_delete(sent)
         return
     lottery_state[message.chat.id] = {"participants": [], "prize": "神秘奖品"}
-    sent = await message.answer("🎟️ 抽奖开启！回复任意消息参与\n管理员发送 /draw 开奖")
+    sent = await message.answer("🎟️ 抽奖已开启！回复任意消息参与\n管理员发送 /draw 开奖")
     await auto_delete(sent, 60)
 
 @dp.message(lambda m: "我的X主页" in m.text or "X主页" in m.text)
@@ -195,12 +170,12 @@ async def menu_unmute(message: Message):
 
 @dp.message(lambda m: "踢人" in m.text)
 async def menu_kick(message: Message):
-    sent = await message.answer("👢 请回复要踢出的消息，然后发送 /kick")
+    sent = await message.answer("👢 请回复要踢出的用户消息，然后发送 /kick")
     await auto_delete(sent)
 
 @dp.message(lambda m: "封禁" in m.text)
 async def menu_ban(message: Message):
-    sent = await message.answer("🚫 请回复要封禁的消息，然后发送 /ban")
+    sent = await message.answer("🚫 请回复要封禁的用户消息，然后发送 /ban")
     await auto_delete(sent)
 
 @dp.message(lambda m: "返回主菜单" in m.text)
@@ -282,7 +257,7 @@ async def cmd_token(message: Message):
         await auto_delete(sent)
 
 
-# ====================== 抽奖 & 管理员命令（完整） ======================
+# ====================== 抽奖 ======================
 @dp.message(Command("lottery"))
 async def cmd_lottery(message: Message):
     await menu_lottery(message)
@@ -308,6 +283,7 @@ async def cmd_draw(message: Message):
     del lottery_state[message.chat.id]
 
 
+# ====================== 管理员功能 ======================
 @dp.message(Command("mute"))
 async def cmd_mute(message: Message):
     if not await is_admin(message):
